@@ -10,10 +10,7 @@
 #include "filelib.h"
 #include "queue.h"
 #include "stack.h"
-#include "vector.h"
-#include "set.h"
-#include <set>
-
+#include "lexicon.h"
 using namespace std;
 
 
@@ -25,17 +22,16 @@ void Welcome() {
 
 }
 
-string FindNextWord(string currWord, Set<string> &dictWords, Set<string> &alreadyUsed)
+string FindNextWord(string currWord, Lexicon &dictLex, Lexicon &alreadyUsed)
 {
     string newWord;
-    cout << "Current word: " << currWord << endl;
-    for (int i = 0; i < currWord.size(); i++) {
+    //cout << "Current word: " << currWord << endl;
+    for (string::size_type i = 0; i < currWord.size(); i++) {
         newWord = currWord;
-        for (char ch = 'a'; ch <= 'z'; ch++)
-        {
+        for (char ch = 'a'; ch <= 'z'; ch++) {
             newWord = newWord.replace(i,1,1,ch);
-            cout << newWord << endl;
-            if (dictWords.contains(newWord))
+            //cout << newWord << endl;
+            if (dictLex.contains(newWord))
                 if (!alreadyUsed.contains(newWord))
                     return newWord;
         }
@@ -45,20 +41,7 @@ string FindNextWord(string currWord, Set<string> &dictWords, Set<string> &alread
 
 
 
-void GenerateLadder(string word1, string word2, Set<string> &dictWords) {
-//    Create an empty queue of stacks.
-//  	Create/add a stack containing {w1} to the queue.
-//  	While the queue is not empty:
-//		Dequeue the partial-ladder stack from the front of the queue.
-//		For each valid English word that is a "neighbor" (differs by 1 letter)
-//		of the word on top of the stack:
-//			If that neighbor word has not already been used in a ladder before:
-//				If the neighbor word is w2:
-//					Hooray! we have found a solution.
-//				Otherwise:
-//					Create a copy of the current partial-ladder stack.
-//					Put the neighbor word on top of the copy stack.
-//					Add the copy stack to the end of the queue.
+void GenerateLadder(string word1, string word2, Lexicon &dictLex) {
 
     // Create empty queue of stacks and add a stack with word1
     Queue<Stack<string> > wordLadder;
@@ -66,36 +49,36 @@ void GenerateLadder(string word1, string word2, Set<string> &dictWords) {
     baseStack.add(word1);
     wordLadder.enqueue(baseStack);
 
-    Set<string> alreadyUsed;
+    Lexicon alreadyUsed;
     string nextStr;
 
     while (true)
     {
-        // build up a new list of items to search, or stop if empty
+        // Build up a new list of items to search or stop if empty
         if (wordLadder.size() == 0)
         {
-            cout << "Nope nothing found! no ladder. fuk u "<< endl;
+            cout << "No word ladder found from " << word2 << " back to " << word1 << "." << endl;
+            cout << endl;
             break;
         }
-        Stack<string> newString = wordLadder.dequeue();
+        Stack<string> newStack = wordLadder.dequeue();
         while (true)
         {
             // find the next word to use
-            nextStr = FindNextWord(newString.peek(), dictWords, alreadyUsed);
-            cout << endl;
+            nextStr = FindNextWord(newStack.peek(), dictLex, alreadyUsed);
             // the end of the search
             if (nextStr == word2) {
                 // Ladder was found
                 cout << "A ladder from " << word2 << " back to " << word1 << ": " << endl;
                 cout << word2 << " ";
-                while (!newString.isEmpty()) {
-                    cout << newString.pop() << " ";
+                while (!newStack.isEmpty()) {
+                    cout << newStack.pop() << " ";
                 }
                 cout << endl << endl;
                 return;
             } else if (nextStr != "") {
                 // if there is another word to search with add to the end of the list
-                Stack<string> addtlStack = newString;
+                Stack<string> addtlStack = newStack;
                 addtlStack.push(nextStr);
                 wordLadder.enqueue(addtlStack);
             }
@@ -109,24 +92,19 @@ void GenerateLadder(string word1, string word2, Set<string> &dictWords) {
 
 
 int main() {
-    // TODO: Finish the program!
     Welcome();
 
     ifstream dictStream;
-    string dictName = promptUserForFile(dictStream, "Dictionary file name? ", "Unable to open that file. Try again. ");
+    promptUserForFile(dictStream, "Dictionary file name? ", "Unable to open that file. Try again. ");
 
-    Set<string> dictWords;
-    string currWord;
-    getline(dictStream, currWord);
-    while (currWord != "") {
-        dictWords.add(currWord);
-        getline(dictStream, currWord);
-    }
+    Lexicon dictLex(dictStream);
+    cout << endl;
 
     while (true) {
         cout << "Word #1 (or Enter to quit): ";
         string word1;
         getline(cin,word1);
+        word1 = toLowerCase(word1);
 
         if (word1.empty()) {
             break;
@@ -135,15 +113,20 @@ int main() {
         cout << "Word #2 (or Enter to quit): ";
         string word2;
         getline(cin,word2);
+        word2 = toLowerCase(word2);
+
         if (word2.empty()) {
             break;
         } else {
 
+            // Check they're the same length
             if (word1.length() != word2.length()) {
                 cout << "The two words must be the same length." << endl;
                 cout << endl;
                 continue;
             }
+
+            // Check if they're different
             if (word1 == word2) {
                 cout << "The two words must be different." << endl;
                 cout << endl;
@@ -151,8 +134,13 @@ int main() {
             }
 
             // Check they're found in dictionary
+            if (!dictLex.contains(word1) || !dictLex.contains(word2)) {
+                cout << "The two words must be found in the dictionary." << endl;
+                cout << endl;
+                continue;
+            }
             // DO THE PROGRAM!
-            GenerateLadder(word1, word2, dictWords);
+            GenerateLadder(word1, word2, dictLex);
         }
     }
     cout << "Have a nice day." << endl;
